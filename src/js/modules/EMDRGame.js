@@ -10,10 +10,13 @@ export class EMDRGame {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.score = 0;
+        this.scoreDisplay = document.getElementById('score');
         this.isRunning = false;
-        this.hemisyncEnabled = true;
+        this.hemisyncEnabled = false; // Set to false by default
+        this.lastBallX = 0; // Track ball's last X position
+        this.cycleCompleted = false; // Track if cycle is completed
         
-        // Initialize game objects first
+        // Initialize game objects
         this.ball = new Ball(this.canvas);
         this.leftCharacter = new Character(this.canvas, 'left');
         this.rightCharacter = new Character(this.canvas, 'right');
@@ -27,6 +30,16 @@ export class EMDRGame {
         // Set canvas size to be responsive
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
+        
+        // Initialize score display with default values
+        if (this.scoreDisplay) {
+            const highScore = parseInt(localStorage.getItem('highScore')) || 0;
+            this.scoreDisplay.textContent = `Score: ${this.score} | High Score: ${highScore}`;
+            this.scoreDisplay.style.display = 'block';
+            console.log('Score display initialized:', this.scoreDisplay.textContent);
+        } else {
+            console.error('Score display element not found!');
+        }
         
         // Start the timing measurement
         this.lastTime = performance.now();
@@ -47,10 +60,25 @@ export class EMDRGame {
         this.draw();
     }
 
+    updateScoreDisplay() {
+        if (this.scoreDisplay) {
+            const highScore = parseInt(localStorage.getItem('highScore')) || 0;
+            this.scoreDisplay.textContent = `Score: ${this.score} | High Score: ${Math.max(this.score, highScore)}`;
+            this.scoreDisplay.style.display = 'block';
+            console.log('Score updated:', this.scoreDisplay.textContent);
+        } else {
+            console.error('Score display element not found in updateScoreDisplay!');
+        }
+    }
+
     async start() {
         try {
             this.isRunning = true;
             this.score = 0;
+            this.cycleCompleted = false;
+            this.lastBallX = 0;
+            this.updateScoreDisplay();
+            
             this.stats.reset();
             if (this.ball) this.ball.reset(this.canvas);
             if (this.leftCharacter) this.leftCharacter.reset();
@@ -83,7 +111,26 @@ export class EMDRGame {
         this.stats.updateSessionTime(currentTime);
         
         // Update game objects
-        if (this.ball) this.ball.update(this.controls.speed);
+        if (this.ball) {
+            this.ball.update(this.controls.speed);
+            
+            // Check for cycle completion
+            if (this.lastBallX > this.ball.x && this.ball.x < this.canvas.width * 0.1) {
+                // Ball has moved from right to left side
+                if (!this.cycleCompleted) {
+                    this.cycleCompleted = true;
+                    this.score += 10; // Add points for completing a cycle
+                    this.updateScoreDisplay();
+                    this.audioManager.playJumpSound();
+                }
+            } else if (this.ball.x > this.canvas.width * 0.9) {
+                // Reset cycle completion flag when ball reaches right side
+                this.cycleCompleted = false;
+            }
+            
+            this.lastBallX = this.ball.x;
+        }
+        
         if (this.leftCharacter) this.leftCharacter.update(this.controls.gravity);
         if (this.rightCharacter) this.rightCharacter.update(this.controls.gravity);
 
@@ -127,12 +174,34 @@ export class EMDRGame {
 
     checkCollision(character) {
         if (!character || !this.ball) return false;
-        return character.checkCollision(this.ball);
+        const collision = character.checkCollision(this.ball);
+        if (collision) {
+            // Increment score and update display
+            this.score += 50;
+            this.updateScoreDisplay();
+            
+            // Play sound and visual effects
+            this.audioManager.playJumpSound();
+            this.visualEffects.createCollisionEffect(character.x, character.y);
+            
+            return true;
+        }
+        return false;
     }
 
     gameOver() {
         this.isRunning = false;
         this.controls.updateStartButton('Start Game');
         this.audioManager.playGameOverSound();
+        
+        // Update high score if needed
+        const highScore = parseInt(localStorage.getItem('highScore')) || 0;
+        if (this.score > highScore) {
+            localStorage.setItem('highScore', this.score.toString());
+        }
+        
+        // Update final score display
+        this.updateScoreDisplay();
+        this.stats.display();
     }
 } 

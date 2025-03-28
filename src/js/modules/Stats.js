@@ -17,6 +17,12 @@ export class Stats {
         this.sessionStartTime = Date.now();
         this.sessionDuration = 0;
         this.lastScoreUpdate = 0;
+
+        // Hide stats container when resetting
+        const statsContainer = document.getElementById('statsContainer');
+        if (statsContainer) {
+            statsContainer.classList.remove('visible');
+        }
     }
 
     updateSessionTime(currentTime) {
@@ -62,6 +68,6 @@ export class Stats {
             <p>Longest Streak: ${this.longestStreak}</p>
             <p>Success Rate: ${this.getSuccessRate()}%</p>
         `;
-        statsContainer.style.display = 'block';
+        statsContainer.classList.add('visible');
     }
 } 

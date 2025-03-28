@@ -10,6 +10,7 @@
 <body>
     <div class="container">
         <h1>EMDR Game</h1>
+        <div id="score" class="score-display"></div>
         <canvas id="gameCanvas"></canvas>
         <div class="controls">
             <button id="startButton">Start Game</button>
@@ -19,10 +20,10 @@
             </div>
             <div class="hemisync-control">
                 <label for="hemisyncToggle">Hemisync Sound:</label>
-                <input type="checkbox" id="hemisyncToggle" checked>
+                <input type="checkbox" id="hemisyncToggle">
             </div>
         </div>
-        <div id="statsContainer" class="stats-container" style="display: none;"></div>
+        <div id="statsContainer" class="stats-container"></div>
     </div>
     <script type="module" src="src/js/game.js"></script>
 </body>

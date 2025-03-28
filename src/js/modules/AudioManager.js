@@ -107,7 +107,7 @@ export class AudioManager {
     stopAll() {
         this.stopHemisync();
         if (this.synth) {
-            this.synth.releaseAll();
+            this.synth.triggerRelease();
         }
     }
 

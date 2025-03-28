@@ -71,6 +71,12 @@ export class Character {
         ctx.roundRect(this.x, this.y, this.width, this.height, 10);
         ctx.fill();
 
+        // Draw perfect hit zone indicator
+        const perfectZoneStart = this.y + (this.height / 3);
+        const perfectZoneHeight = this.height / 3;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.fillRect(this.x, perfectZoneStart, this.width, perfectZoneHeight);
+
         // Draw eyes
         ctx.fillStyle = '#FFFFFF';
         const eyeSize = 8;
@@ -90,11 +96,29 @@ export class Character {
     }
 
     checkCollision(ball) {
-        return (
+        // Basic collision detection
+        const hasCollision = (
             ball.x < this.x + this.width &&
-            ball.x + ball.size > this.x &&
+            ball.x + ball.radius * 2 > this.x &&
             ball.y < this.y + this.height &&
-            ball.y + ball.size > this.y
+            ball.y + ball.radius * 2 > this.y
         );
+
+        if (!hasCollision) {
+            return { collision: false };
+        }
+
+        // Calculate perfect jump zone (middle third of character height)
+        const perfectZoneStart = this.y + (this.height / 3);
+        const perfectZoneEnd = this.y + (this.height * 2 / 3);
+        
+        // Check if ball center is in perfect zone
+        const ballCenterY = ball.y + ball.radius;
+        const isPerfect = ballCenterY >= perfectZoneStart && ballCenterY <= perfectZoneEnd;
+
+        return {
+            collision: true,
+            isPerfect: isPerfect
+        };
     }
 } 
