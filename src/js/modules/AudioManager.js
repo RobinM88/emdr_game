@@ -5,6 +5,8 @@ export class AudioManager {
         this.rightOsc = null;
         this.soundEnabled = true;
         this.initialized = false;
+        this.lastPlayTime = 0;
+        this.minTimeBetweenSounds = 100; // Minimum ms between sounds
     }
 
     async initializeAudio() {
@@ -84,7 +86,13 @@ export class AudioManager {
         if (!this.soundEnabled || !this.synth) return;
         
         try {
-            this.synth.triggerAttackRelease("C4", "0.1");
+            const now = Date.now();
+            if (now - this.lastPlayTime < this.minTimeBetweenSounds) {
+                return; // Skip if too soon after last sound
+            }
+            this.lastPlayTime = now;
+            
+            await this.synth.triggerAttackRelease("C4", "0.1");
         } catch (error) {
             console.error('Error playing jump sound:', error);
         }
@@ -98,7 +106,18 @@ export class AudioManager {
         if (!this.soundEnabled || !this.synth) return;
         
         try {
-            this.synth.triggerAttackRelease(["C4", "E4", "G4"], "0.2");
+            const now = Date.now();
+            if (now - this.lastPlayTime < this.minTimeBetweenSounds) {
+                await new Promise(resolve => setTimeout(resolve, this.minTimeBetweenSounds));
+            }
+            this.lastPlayTime = now;
+            
+            // Play notes with slight delay between them
+            await this.synth.triggerAttackRelease("C4", "0.2");
+            await new Promise(resolve => setTimeout(resolve, 200));
+            await this.synth.triggerAttackRelease("E4", "0.2");
+            await new Promise(resolve => setTimeout(resolve, 200));
+            await this.synth.triggerAttackRelease("G4", "0.2");
         } catch (error) {
             console.error('Error playing game over sound:', error);
         }

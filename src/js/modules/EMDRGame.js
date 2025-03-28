@@ -73,23 +73,30 @@ export class EMDRGame {
 
     async start() {
         try {
+            // Reset game state
             this.isRunning = true;
             this.score = 0;
             this.cycleCompleted = false;
             this.lastBallX = 0;
             this.updateScoreDisplay();
             
+            // Reset all components
             this.stats.reset();
-            if (this.ball) this.ball.reset(this.canvas);
+            this.visualEffects.clear();
+            
+            if (this.ball) {
+                this.ball.reset(this.canvas);
+            }
             if (this.leftCharacter) this.leftCharacter.reset();
             if (this.rightCharacter) this.rightCharacter.reset();
             
+            // Start audio if enabled
             if (this.hemisyncEnabled) {
                 await this.audioManager.startHemisync();
             }
             
             this.controls.updateStartButton('Stop Game');
-            this.gameLoop();
+            requestAnimationFrame(() => this.gameLoop());
         } catch (error) {
             console.error('Error starting game:', error);
             this.stop();
@@ -99,9 +106,7 @@ export class EMDRGame {
     stop() {
         this.isRunning = false;
         this.controls.updateStartButton('Start Game');
-        this.audioManager.stopAll();
-        this.visualEffects.clear();
-        this.stats.display();
+        this.audioManager.stopHemisync();
     }
 
     update() {
@@ -121,7 +126,7 @@ export class EMDRGame {
                     this.cycleCompleted = true;
                     this.score += 10; // Add points for completing a cycle
                     this.updateScoreDisplay();
-                    this.audioManager.playJumpSound();
+                    this.audioManager.playJumpSound().catch(console.error);
                 }
             } else if (this.ball.x > this.canvas.width * 0.9) {
                 // Reset cycle completion flag when ball reaches right side
@@ -129,14 +134,31 @@ export class EMDRGame {
             }
             
             this.lastBallX = this.ball.x;
+            
+            // Add ball trail effect
+            this.visualEffects.addBallTrail(this.ball.x, this.ball.y);
         }
         
         if (this.leftCharacter) this.leftCharacter.update(this.controls.gravity);
         if (this.rightCharacter) this.rightCharacter.update(this.controls.gravity);
 
-        // Check for collisions
-        if (this.checkCollision(this.leftCharacter) || this.checkCollision(this.rightCharacter)) {
-            this.gameOver();
+        // Check for collisions only if ball is not resetting
+        if (this.ball && !this.ball.isResetting) {
+            if (this.leftCharacter) {
+                const leftCollision = this.checkCollision(this.leftCharacter);
+                if (leftCollision) {
+                    this.gameOver();
+                    return;
+                }
+            }
+            
+            if (this.rightCharacter) {
+                const rightCollision = this.checkCollision(this.rightCharacter);
+                if (rightCollision) {
+                    this.gameOver();
+                    return;
+                }
+            }
         }
 
         // Update visual effects
@@ -173,32 +195,36 @@ export class EMDRGame {
     }
 
     checkCollision(character) {
-        if (!character || !this.ball) return false;
+        if (!character || !this.ball || this.ball.isResetting) return false;
+        
         const collision = character.checkCollision(this.ball);
-        if (collision) {
+        if (collision.collision) {
             // Increment score and update display
-            this.score += 50;
+            this.score += collision.isPerfect ? 100 : 50;
             this.updateScoreDisplay();
             
-            // Play sound and visual effects
-            this.audioManager.playJumpSound();
-            this.visualEffects.createCollisionEffect(character.x, character.y);
+            // Play sound effect
+            this.audioManager.playJumpSound().catch(console.error);
+            
+            // Create visual effect at the collision point
+            if (character.position === 'left') {
+                this.visualEffects.createCollisionEffect(character.x + character.width, character.y);
+            } else {
+                this.visualEffects.createCollisionEffect(character.x, character.y);
+            }
             
             return true;
         }
         return false;
     }
 
-    gameOver() {
+    async gameOver() {
         this.isRunning = false;
         this.controls.updateStartButton('Start Game');
-        this.audioManager.playGameOverSound();
         
-        // Update high score if needed
-        const highScore = parseInt(localStorage.getItem('highScore')) || 0;
-        if (this.score > highScore) {
-            localStorage.setItem('highScore', this.score.toString());
-        }
+        // Play game over sound and stop all other audio
+        await this.audioManager.playGameOverSound().catch(console.error);
+        this.audioManager.stopHemisync();
         
         // Update final score display
         this.updateScoreDisplay();

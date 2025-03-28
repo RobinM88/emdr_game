@@ -151,4 +151,11 @@ export class VisualEffects {
         this.particles = [];
         this.ballTrail = [];
     }
+
+    createCollisionEffect(x, y) {
+        // Create multiple particles for a burst effect
+        for (let i = 0; i < 10; i++) {
+            this.addParticle(x, y, 'jump');
+        }
+    }
 } 

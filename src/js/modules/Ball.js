@@ -4,6 +4,7 @@ export class Ball {
         this.size = 20;
         this.speed = 5;
         this.direction = 1; // 1 for right, -1 for left
+        this.isResetting = false;
         this.updatePosition(canvas);
     }
 
@@ -14,14 +15,28 @@ export class Ball {
     }
 
     reset(canvas) {
-        this.updatePosition(canvas);
+        this.canvas = canvas;
+        // Position ball in the middle horizontally and at ground level
+        const groundY = canvas.height - canvas.height * 0.2;
+        this.x = canvas.width / 2 - this.size / 2;
+        this.y = groundY - this.size;
         this.direction = 1;
+        this.isResetting = true;
         this.speed = 5;
+        
+        // Clear isResetting after a short delay
+        setTimeout(() => {
+            this.isResetting = false;
+        }, 1000);
     }
 
     update(speed) {
-        // Update speed from controls
-        if (speed !== undefined) this.speed = speed;
+        if (this.isResetting) return; // Don't move while resetting
+
+        // Update speed from controls (minimum speed of 2)
+        if (speed !== undefined) {
+            this.speed = Math.max(2, speed);
+        }
 
         // Move ball
         const nextX = this.x + (this.speed * this.direction);
